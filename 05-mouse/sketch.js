@@ -17,7 +17,7 @@ function draw() {
 
 function mousePressed() {
     diamteter += 20;
-    if (diamteter > 200) {
+    if (diamteter > 400) {
         diamteter = 50;
     }
 }

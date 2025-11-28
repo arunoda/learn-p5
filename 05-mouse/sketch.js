@@ -12,7 +12,11 @@ function draw() {
     // circle
     noStroke();
     fill(200);
+    circle(mouseX - 100, mouseY, diamteter);
+    circle(mouseX + 100, mouseY, diamteter);
     circle(mouseX, mouseY, diamteter);
+    circle(mouseX, mouseY + 100, diamteter);
+    circle(mouseX, mouseY - 100, diamteter);
 }
 
 function mousePressed() {

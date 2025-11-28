@@ -15,7 +15,7 @@ function draw() {
 
     if (showAxes) {
         push();
-        drawAxes(1);
+        drawAxes(10000);
         pop();
     }
 
@@ -47,18 +47,19 @@ function keyPressed() {
 }
 
 // Helper: draw X/Y/Z axes
+// Helper: draw X/Y/Z axes
 function drawAxes(size) {
     strokeWeight(2);
-  
+
     // X axis (red)
-    stroke(255, 100, 100);
-    line(1000, 0, 0, size, 0, 0);
-  
+    stroke(255, 0, 0);
+    line(0, 0, 0, size, 0, 0);
+
     // Y axis (green)
-    stroke(100, 255, 100);
-    line(0, 1000, 0, 0, size, 0);
-  
+    stroke(0, 255, 0);
+    line(0, 0, 0, 0, size, 0);
+
     // Z axis (blue)
-    stroke(100, 100, 255);
-    line(0, 0, 1000, 0, 0, size);
-  }
+    stroke(0, 0, 255);
+    line(0, 0, 0, 0, 0, size);
+}

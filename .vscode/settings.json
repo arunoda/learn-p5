@@ -1,3 +1,4 @@
 {
-    "idf.pythonInstallPath": "/opt/homebrew/bin/python3"
+    "idf.pythonInstallPath": "/opt/homebrew/bin/python3",
+    "livePreview.defaultPreviewPath": "/07-hello-3d/index.html"
 }

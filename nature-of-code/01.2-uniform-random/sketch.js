@@ -17,10 +17,11 @@ function draw() {
     const randomClass = floor(random(classCount));
     classes[randomClass] += 1;
 
-    const barWidth = width/classCount;
+    const barWidth = (width - 2)/classCount;
     for (let i = 0; i < classCount; i++) {
-        // noStroke();
+        stroke(30)
+        fill(100)
         const barHeight = classes[i];
-        rect(i * barWidth, height-barHeight, barWidth, barHeight);
+        rect(1 + i * barWidth, height-barHeight, barWidth, barHeight);
     }
 }

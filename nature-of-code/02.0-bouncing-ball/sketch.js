@@ -8,8 +8,8 @@ function setup() {
     y = height/2;
 }
 
-let xSpeed = 1;
-let ySpeed = 2;
+let xSpeed = 2;
+let ySpeed = 3;
 
 function draw() {
     // Runs every frame (default ~60 fps)

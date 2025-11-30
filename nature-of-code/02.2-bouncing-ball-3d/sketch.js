@@ -2,14 +2,14 @@ let position;
 let velocity;
 
 let sphereRadius = 20;
-let boxSize = 100;
+let boxSize = 200;
 
 function setup() {
     // Runs once
     createCanvas(600, 400, WEBGL); // width, height
 
     position = createVector(0, 0, 0);
-    velocity = createVector(1, 1, 2);
+    velocity = createVector(3, 5, 2);
 }
 
 function draw() {

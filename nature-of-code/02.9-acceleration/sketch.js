@@ -1,18 +1,21 @@
 let circlePosition;
 let velocity;
+let acc;
 
 function setup() {
     // Runs once
     createCanvas(600, 400); // width, height
 
     circlePosition = createVector(width/2, height/2);
-    velocity = createVector(0, -10);
+    velocity = createVector(0, 1);
+    acc = createVector(0, 0.1);
 }
 
 function draw() {
     // Runs every frame (default ~60 fps)
     background(30);
 
+    velocity.add(acc);
     circlePosition.add(velocity);
 
     if (circlePosition.y > height) {

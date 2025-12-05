@@ -153,6 +153,33 @@ function updateStages() {
     }
 }
 
+function getStageProgress() {
+    const elapsedFrames = frameCount - stageStartFrame;
+    let progress = 0;
+    
+    if (currentStage === 0) {
+        progress = elapsedFrames / SECONDS_TO_FRAMES(STAGE_CONFIG.delayBeforeAppear);
+    } else if (currentStage === 1) {
+        // Progress based on distance traveled
+        const totalDistance = calc_distance(comet.startPosition, firstTargetPosition);
+        const remainingDistance = calc_distance(comet.position, firstTargetPosition);
+        if (totalDistance > 0) {
+            progress = 1 - (remainingDistance / totalDistance);
+        }
+    } else if (currentStage === 2) {
+        progress = elapsedFrames / SECONDS_TO_FRAMES(STAGE_CONFIG.stayAtFirstTarget);
+    } else if (currentStage === 3) {
+        // Progress based on distance traveled
+        const totalDistance = calc_distance(comet.startPosition, secondTargetPosition);
+        const remainingDistance = calc_distance(comet.position, secondTargetPosition);
+        if (totalDistance > 0) {
+            progress = 1 - (remainingDistance / totalDistance);
+        }
+    }
+    
+    return constrain(progress, 0, 1);
+}
+
 function renderCountdown() {
     const elapsedFrames = frameCount - stageStartFrame;
     let timeRemaining = 0;
@@ -185,7 +212,33 @@ function renderCountdown() {
     textAlign(CENTER);
     textSize(16);
     const countdownText = `${stageName}: ${max(0, timeRemaining).toFixed(1)}s`;
-    text(countdownText, width / 2, height - 20);
+    text(countdownText, width / 2, height - 50);
+    
+    // Render progress bar
+    renderProgressBar();
+}
+
+function renderProgressBar() {
+    const progress = getStageProgress();
+    const barWidth = width * 0.6;
+    const barHeight = 8;
+    const barX = (width - barWidth) / 2;
+    const barY = height - 30;
+    
+    // Background bar
+    fill(50);
+    noStroke();
+    rect(barX, barY, barWidth, barHeight, 4);
+    
+    // Progress bar
+    fill(150, 200, 255);
+    rect(barX, barY, barWidth * progress, barHeight, 4);
+    
+    // Border
+    noFill();
+    stroke(100);
+    strokeWeight(1);
+    rect(barX, barY, barWidth, barHeight, 4);
 }
 
 function renderEarth() {

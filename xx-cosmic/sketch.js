@@ -37,7 +37,7 @@ class Comet {
         const targetDirection = p5.Vector.normalize(toTarget);
         const distance = toTarget.mag();
 
-        const thresholdDistance = max(10, this.totalDistance/10);
+        const thresholdDistance = min(10, this.totalDistance/10);
         if (distance < thresholdDistance) {
             const velocity = p5.Vector.mult(targetDirection, min(this.speed, distance * 0.1));
             this.position.add(velocity);
@@ -72,7 +72,7 @@ function setup() {
     comet = new Comet(createVector(10, 10), 10);
 
     const targetPosition = createVector(width/2, height/2);
-    const speed = calc_distance(targetPosition, comet.position) / SECONDS_TO_FRAMES(5);
+    const speed = calc_distance(targetPosition, comet.position) / SECONDS_TO_FRAMES(1);
     comet.setTarget(targetPosition, speed);
 }
 

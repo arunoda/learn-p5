@@ -1,7 +1,8 @@
 class ConfigUI {
-    constructor(stageConfig, resetCallback) {
+    constructor(stageConfig, resetCallback, startFromStageCallback) {
         this.stageConfig = stageConfig;
         this.resetCallback = resetCallback;
+        this.startFromStageCallback = startFromStageCallback;
         this.panelVisible = false;
         this.button = null;
         this.panel = null;
@@ -141,10 +142,10 @@ class ConfigUI {
     createInputs() {
         // Create input for each config value
         const configs = [
-            { key: "delayBeforeAppear", label: "Delay Before Appear (seconds)" },
-            { key: "timeToFirstTarget", label: "Time to First Target (seconds)" },
-            { key: "stayAtFirstTarget", label: "Stay at First Target (seconds)" },
-            { key: "timeToSecondTarget", label: "Time to Second Target (seconds)" }
+            { key: "delayBeforeAppear", label: "Delay Before Appear (seconds)", stage: 0 },
+            { key: "timeToFirstTarget", label: "Time to First Target (seconds)", stage: 1 },
+            { key: "stayAtFirstTarget", label: "Stay at First Target (seconds)", stage: 2 },
+            { key: "timeToSecondTarget", label: "Time to Second Target (seconds)", stage: 3 }
         ];
         
         configs.forEach((config, index) => {
@@ -159,11 +160,17 @@ class ConfigUI {
             }
             label.style("margin-bottom", "5px");
             
+            // Create container for input and play button (side by side)
+            const inputRow = createDiv();
+            inputRow.parent(this.panel);
+            inputRow.style("display", "flex");
+            inputRow.style("gap", "5px");
+            inputRow.style("margin-bottom", "5px");
+            
             // Create input
             const input = createInput(this.stageConfig[config.key].toString());
-            input.parent(this.panel);
-            input.style("display", "block");
-            input.style("width", "100%");
+            input.parent(inputRow);
+            input.style("flex", "1");
             input.style("box-sizing", "border-box");
             input.style("background-color", "#2a2a2a");
             input.style("color", "#c8c8c8");
@@ -172,12 +179,42 @@ class ConfigUI {
             input.style("padding", "4px 8px");
             input.style("font-size", "12px");
             input.style("font-family", "monospace");
-            input.style("margin-bottom", "5px");
+            
+            // Create play button for this stage
+            const stagePlayButton = createButton("▶");
+            stagePlayButton.parent(inputRow);
+            stagePlayButton.style("padding", "4px 12px");
+            stagePlayButton.style("background-color", "#4a7c59");
+            stagePlayButton.style("color", "#ffffff");
+            stagePlayButton.style("border", "none");
+            stagePlayButton.style("border-radius", "4px");
+            stagePlayButton.style("font-size", "12px");
+            stagePlayButton.style("font-family", "monospace");
+            stagePlayButton.style("cursor", "pointer");
+            stagePlayButton.style("transition", "background-color 0.2s");
+            stagePlayButton.style("flex-shrink", "0");
+            stagePlayButton.style("white-space", "nowrap");
+            stagePlayButton.mouseOver(() => {
+                stagePlayButton.style("background-color", "#5a9c69");
+            });
+            stagePlayButton.mouseOut(() => {
+                stagePlayButton.style("background-color", "#4a7c59");
+            });
+            stagePlayButton.mousePressed(() => {
+                if (this.startFromStageCallback) {
+                    this.startFromStageCallback(config.stage);
+                }
+            });
             
             // Add change handler
             input.input(() => {
                 const value = parseFloat(input.value());
-                if (!isNaN(value) && value >= 0) {
+                // Fields used as divisors (timeToFirstTarget, timeToSecondTarget) must be > 0
+                // Other fields can be >= 0
+                const isDivisorField = config.key === "timeToFirstTarget" || config.key === "timeToSecondTarget";
+                const isValid = !isNaN(value) && (isDivisorField ? value > 0 : value >= 0);
+                
+                if (isValid) {
                     this.stageConfig[config.key] = value;
                     this.saveConfigToStorage();
                 } else {
@@ -223,4 +260,3 @@ class ConfigUI {
         }
     }
 }
-

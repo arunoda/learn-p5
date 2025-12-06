@@ -61,7 +61,7 @@ function setup() {
     stageStartFrame = frameCount;
 
     // Initialize config UI
-    configUI = new ConfigUI(STAGE_CONFIG, resetAnimation);
+    configUI = new ConfigUI(STAGE_CONFIG, resetAnimation, startFromStage);
     configUI.init();
 }
 
@@ -72,12 +72,59 @@ function resetAnimation() {
     comet.startPosition = initialPos;
     comet.target = initialPos;
     comet.speed = 0;
+    comet.totalDistance = 0;
     comet.trail = [];
     comet.show(false);
     
     // Reset stage
     currentStage = 0;
     stageStartFrame = frameCount;
+}
+
+function startFromStage(stage) {
+    const initialPos = createVector(width * 0.05, height * 0.05);
+    
+    if (stage === 0) {
+        // Stage 0: Waiting for comet to appear
+        comet.position = initialPos;
+        comet.startPosition = initialPos;
+        comet.target = initialPos;
+        comet.speed = 0;
+        comet.totalDistance = 0;
+        comet.trail = [];
+        comet.show(false);
+        currentStage = 0;
+        stageStartFrame = frameCount;
+    } else if (stage === 1) {
+        // Stage 1: Moving to first target
+        comet.position = initialPos;
+        comet.startPosition = initialPos;
+        comet.show(true);
+        const speed = calc_distance(firstTargetPosition, comet.position) / SECONDS_TO_FRAMES(STAGE_CONFIG.timeToFirstTarget);
+        comet.setTarget(firstTargetPosition, speed);
+        currentStage = 1;
+        stageStartFrame = frameCount;
+    } else if (stage === 2) {
+        // Stage 2: Staying at first target
+        comet.position = createVector(firstTargetPosition.x, firstTargetPosition.y);
+        comet.startPosition = firstTargetPosition;
+        comet.target = firstTargetPosition;
+        comet.speed = 0;
+        comet.totalDistance = 0;
+        comet.trail = [];
+        comet.show(true);
+        currentStage = 2;
+        stageStartFrame = frameCount;
+    } else if (stage === 3) {
+        // Stage 3: Moving to second target
+        comet.position = createVector(firstTargetPosition.x, firstTargetPosition.y);
+        comet.startPosition = firstTargetPosition;
+        comet.show(true);
+        const speed = calc_distance(secondTargetPosition, comet.position) / SECONDS_TO_FRAMES(STAGE_CONFIG.timeToSecondTarget);
+        comet.setTarget(secondTargetPosition, speed);
+        currentStage = 3;
+        stageStartFrame = frameCount;
+    }
 }
 
 function windowResized() {

@@ -81,8 +81,10 @@ function resetAnimation() {
     stageStartFrame = frameCount;
 }
 
-function startFromStage(stage) {
+function startFromStage(stage, seconds = 0) {
     const initialPos = createVector(width * 0.05, height * 0.05);
+    const secondsOffset = seconds || 0;
+    const framesOffset = SECONDS_TO_FRAMES(secondsOffset);
     
     if (stage === 0) {
         // Stage 0: Waiting for comet to appear
@@ -94,7 +96,7 @@ function startFromStage(stage) {
         comet.trail = [];
         comet.show(false);
         currentStage = 0;
-        stageStartFrame = frameCount;
+        stageStartFrame = frameCount - framesOffset;
     } else if (stage === 1) {
         // Stage 1: Moving to first target
         comet.position = initialPos;
@@ -103,7 +105,15 @@ function startFromStage(stage) {
         const speed = calc_distance(firstTargetPosition, comet.position) / SECONDS_TO_FRAMES(STAGE_CONFIG.timeToFirstTarget);
         comet.setTarget(firstTargetPosition, speed);
         currentStage = 1;
-        stageStartFrame = frameCount;
+        stageStartFrame = frameCount - framesOffset;
+        
+        // If jumping forward in time, update comet position
+        if (secondsOffset > 0) {
+            const progress = Math.min(secondsOffset / STAGE_CONFIG.timeToFirstTarget, 1);
+            const direction = p5.Vector.sub(firstTargetPosition, initialPos);
+            comet.position = p5.Vector.add(initialPos, p5.Vector.mult(direction, progress));
+            comet.update();
+        }
     } else if (stage === 2) {
         // Stage 2: Staying at first target
         comet.position = createVector(firstTargetPosition.x, firstTargetPosition.y);
@@ -114,7 +124,7 @@ function startFromStage(stage) {
         comet.trail = [];
         comet.show(true);
         currentStage = 2;
-        stageStartFrame = frameCount;
+        stageStartFrame = frameCount - framesOffset;
     } else if (stage === 3) {
         // Stage 3: Moving to second target
         comet.position = createVector(firstTargetPosition.x, firstTargetPosition.y);
@@ -123,7 +133,15 @@ function startFromStage(stage) {
         const speed = calc_distance(secondTargetPosition, comet.position) / SECONDS_TO_FRAMES(STAGE_CONFIG.timeToSecondTarget);
         comet.setTarget(secondTargetPosition, speed);
         currentStage = 3;
-        stageStartFrame = frameCount;
+        stageStartFrame = frameCount - framesOffset;
+        
+        // If jumping forward in time, update comet position
+        if (secondsOffset > 0) {
+            const progress = Math.min(secondsOffset / STAGE_CONFIG.timeToSecondTarget, 1);
+            const direction = p5.Vector.sub(secondTargetPosition, firstTargetPosition);
+            comet.position = p5.Vector.add(firstTargetPosition, p5.Vector.mult(direction, progress));
+            comet.update();
+        }
     }
 }
 

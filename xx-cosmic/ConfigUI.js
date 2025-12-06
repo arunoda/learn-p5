@@ -8,6 +8,7 @@ class ConfigUI {
         this.panel = null;
         this.playButton = null;
         this.inputs = {};
+        this.stageSecondsInputs = {}; // Store seconds inputs for each stage
         this.showButtonThreshold = 100; // Show button when mouse is within 100px from top
     }
 
@@ -180,6 +181,28 @@ class ConfigUI {
             input.style("font-size", "12px");
             input.style("font-family", "monospace");
             
+            // Create seconds input for jumping to specific time in stage
+            const secondsInput = createInput("0");
+            secondsInput.parent(inputRow);
+            secondsInput.style("width", "50px");
+            secondsInput.style("box-sizing", "border-box");
+            secondsInput.style("background-color", "#2a2a2a");
+            secondsInput.style("color", "#c8c8c8");
+            secondsInput.style("border", "1px solid #646464");
+            secondsInput.style("border-radius", "4px");
+            secondsInput.style("padding", "4px 8px");
+            secondsInput.style("font-size", "12px");
+            secondsInput.style("font-family", "monospace");
+            secondsInput.style("flex-shrink", "0");
+            
+            // Validate seconds input
+            secondsInput.input(() => {
+                const value = parseFloat(secondsInput.value());
+                if (isNaN(value) || value < 0) {
+                    secondsInput.value("0");
+                }
+            });
+            
             // Create play button for this stage
             const stagePlayButton = createButton("▶");
             stagePlayButton.parent(inputRow);
@@ -202,9 +225,13 @@ class ConfigUI {
             });
             stagePlayButton.mousePressed(() => {
                 if (this.startFromStageCallback) {
-                    this.startFromStageCallback(config.stage);
+                    const seconds = parseFloat(secondsInput.value()) || 0;
+                    this.startFromStageCallback(config.stage, seconds);
                 }
             });
+            
+            // Store seconds input reference
+            this.stageSecondsInputs[config.stage] = secondsInput;
             
             // Add change handler
             input.input(() => {

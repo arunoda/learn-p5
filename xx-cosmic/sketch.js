@@ -15,6 +15,7 @@ let currentStage = 0; // 0: waiting, 1: moving to first, 2: staying, 3: moving t
 let stageStartFrame = 0;
 let firstTargetPosition;
 let secondTargetPosition;
+let positionRestored = false; // Flag to track if position was restored from localStorage
 
 // Comet size configuration
 const COMET_SIZE_CONFIG = {
@@ -63,6 +64,9 @@ function setup() {
     // Initialize config UI
     configUI = new ConfigUI(STAGE_CONFIG, resetAnimation, startFromStage);
     configUI.init();
+
+    // Try to restore position from localStorage
+    loadAndRestorePosition();
 }
 
 function resetAnimation() {
@@ -79,6 +83,10 @@ function resetAnimation() {
     // Reset stage
     currentStage = 0;
     stageStartFrame = frameCount;
+    positionRestored = false;
+    
+    // Clear saved position from localStorage
+    clearSavedPosition();
 }
 
 function startFromStage(stage, seconds = 0) {
@@ -170,6 +178,9 @@ function draw() {
 
     updateStages();
     
+    // Save current position to localStorage (every frame)
+    saveCurrentPosition();
+    
     earth.render();
     comet.update();
     loadingScreen.render(currentStage, stageStartFrame, comet, firstTargetPosition, secondTargetPosition, STAGE_CONFIG);
@@ -181,6 +192,49 @@ function draw() {
 
     if (keyIsDown("h") || keyIsDown("H")) {
         comet.show(false);
+    }
+}
+
+function saveCurrentPosition() {
+    try {
+        const elapsedFrames = frameCount - stageStartFrame;
+        const elapsedSeconds = FRAMES_TO_SECONDS(elapsedFrames);
+        
+        const positionData = {
+            stage: currentStage,
+            seconds: elapsedSeconds
+        };
+        
+        localStorage.setItem("cosmicCurrentPosition", JSON.stringify(positionData));
+    } catch (e) {
+        console.warn("Could not save position to localStorage:", e);
+    }
+}
+
+function loadAndRestorePosition() {
+    try {
+        const saved = localStorage.getItem("cosmicCurrentPosition");
+        if (saved) {
+            const positionData = JSON.parse(saved);
+            const stage = positionData.stage || 0;
+            const seconds = positionData.seconds || 0;
+            
+            // Restore the position using startFromStage
+            if (stage >= 0 && stage <= 3 && seconds >= 0) {
+                startFromStage(stage, seconds);
+                positionRestored = true;
+            }
+        }
+    } catch (e) {
+        console.warn("Could not load position from localStorage:", e);
+    }
+}
+
+function clearSavedPosition() {
+    try {
+        localStorage.removeItem("cosmicCurrentPosition");
+    } catch (e) {
+        console.warn("Could not clear position from localStorage:", e);
     }
 }
 

@@ -57,12 +57,12 @@ class LoadingScreen {
             stageName = "Moving away";
         }
         
-        // Display countdown at bottom
+        // Display countdown at bottom (relative to screen size)
         fill(100);
         textAlign(CENTER);
-        textSize(16);
+        textSize(max(12, width * 0.025)); // Responsive text size
         const countdownText = `${stageName}: ${max(0, timeRemaining).toFixed(1)}s`;
-        text(countdownText, width / 2, height - 50);
+        text(countdownText, width / 2, height - height * 0.1);
         
         // Render progress bar
         const progress = this.getStageProgress(currentStage, stageStartFrame, comet, firstTargetPosition, secondTargetPosition, STAGE_CONFIG);
@@ -71,9 +71,9 @@ class LoadingScreen {
 
     renderProgressBar(progress) {
         const barWidth = width * 0.6;
-        const barHeight = 8;
+        const barHeight = max(6, height * 0.015); // Responsive bar height
         const barX = (width - barWidth) / 2;
-        const barY = height - 30;
+        const barY = height - height * 0.06; // Relative to screen height
         
         // Background bar
         fill(50);

@@ -4,10 +4,10 @@ let loadingScreen;
 
 // Stage configuration (in seconds)
 const STAGE_CONFIG = {
-    delayBeforeAppear: 5,      // Time before comet appears
-    timeToFirstTarget: 10,      // Time to reach first target (close to earth)
-    stayAtFirstTarget: 5,      // Time to stay at first target
-    timeToSecondTarget: 10      // Time to reach second target (away from earth)
+    delayBeforeAppear: 1,      // Time before comet appears
+    timeToFirstTarget: 1,      // Time to reach first target (close to earth)
+    stayAtFirstTarget: 1,      // Time to stay at first target
+    timeToSecondTarget: 1      // Time to reach second target (away from earth)
 };
 
 let currentStage = 0; // 0: waiting, 1: moving to first, 2: staying, 3: moving to second
@@ -17,10 +17,19 @@ let secondTargetPosition;
 
 // Comet size configuration
 const COMET_SIZE_CONFIG = {
-    minSize: 1,        // Minimum size when far from first target
-    maxSize: 20,       // Maximum size when at first target
-    maxDistance: 600   // Maximum distance for size calculation (canvas diagonal)
+    minSize: null,     // Will be calculated based on screen size
+    maxSize: null,     // Will be calculated based on screen size
+    maxDistance: null  // Will be calculated based on canvas diagonal
 };
+
+function updateCometSizeConfig() {
+    // Calculate sizes relative to screen dimensions
+    // Use average of width and height for balanced scaling
+    const avgDimension = (width + height) / 2;
+    COMET_SIZE_CONFIG.minSize = avgDimension * 0.005;  // 0.5% of average dimension
+    COMET_SIZE_CONFIG.maxSize = avgDimension * 0.03;    // 3% of average dimension
+    COMET_SIZE_CONFIG.maxDistance = sqrt(width * width + height * height);
+}
 
 function SECONDS_TO_FRAMES(seconds) {
     const fps = 60;
@@ -37,23 +46,43 @@ function calc_distance(x, y) {
 }
 
 function setup() {
-    // Runs once
-    createCanvas(600, 400); // width, height
+    // Runs once - use full window size
+    createCanvas(windowWidth, windowHeight);
 
-    earth = new Earth(350);
+    // Calculate comet size configuration based on screen dimensions
+    updateCometSizeConfig();
+
+    earth = new Earth();
     loadingScreen = new LoadingScreen();
 
-    comet = new Comet(createVector(10, 10), 10);
+    // Comet starts at top-left corner (relative position)
+    // Initial size is based on screen dimensions
+    const initialSize = (width + height) / 2 * 0.01; // 1% of average dimension
+    comet = new Comet(createVector(width * 0.05, height * 0.05), initialSize);
     comet.show(false); // Start hidden
 
-    // First target: close to earth (current target)
+    // First target: close to earth (center of screen)
     firstTargetPosition = createVector(width/2, height/2);
     
-    // Second target: away from earth (top-left area)
-    secondTargetPosition = createVector(width * 0.7, height * 0.4);
+    // Second target: away from earth (top-right area)
+    secondTargetPosition = createVector(width * 0.7, height * 0.3);
 
     currentStage = 0;
     stageStartFrame = frameCount;
+}
+
+function windowResized() {
+    resizeCanvas(windowWidth, windowHeight);
+    
+    // Recalculate comet size configuration
+    updateCometSizeConfig();
+    
+    // Update Earth position
+    earth.updatePosition();
+    
+    // Update target positions
+    firstTargetPosition = createVector(width/2, height/2);
+    secondTargetPosition = createVector(width * 0.7, height * 0.3);
 }
 
 function draw() {

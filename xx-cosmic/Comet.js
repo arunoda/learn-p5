@@ -7,6 +7,8 @@ class Comet {
         this.size = size;
         this.totalDistance = 0;
         this.allowRender = true;
+
+        // Visual trail
         this.trail = [];
         this.maxTrailLength = 80;
         this.lastVelocity = createVector(0, 0);
@@ -40,10 +42,13 @@ class Comet {
         const targetDirection = p5.Vector.normalize(toTarget);
         const distance = toTarget.mag();
 
-        const thresholdDistance = min(10, this.totalDistance/10);
+        const thresholdDistance = min(10, this.totalDistance / 10);
         let velocity;
         if (distance < thresholdDistance) {
-            velocity = p5.Vector.mult(targetDirection, min(this.speed, distance * 0.1));
+            velocity = p5.Vector.mult(
+                targetDirection,
+                min(this.speed, distance * 0.1)
+            );
         } else {
             velocity = p5.Vector.mult(targetDirection, this.speed);
         }
@@ -60,7 +65,7 @@ class Comet {
                 this.trail.shift();
             }
         }
-        
+
         // Update size based on distance from first target
         this.updateSize();
 
@@ -68,13 +73,23 @@ class Comet {
         this.renderTail();
         this.renderHead();
     }
-    
+
     updateSize() {
-        const distanceFromFirstTarget = calc_distance(this.position, firstTargetPosition);
+        const distanceFromFirstTarget = calc_distance(
+            this.position,
+            firstTargetPosition
+        );
         // Normalize distance (0 = at first target, 1 = at max distance)
-        const normalizedDistance = min(distanceFromFirstTarget / COMET_SIZE_CONFIG.maxDistance, 1);
+        const normalizedDistance = min(
+            distanceFromFirstTarget / COMET_SIZE_CONFIG.maxDistance,
+            1
+        );
         // Size is larger when closer to first target (inverse relationship)
-        this.size = lerp(COMET_SIZE_CONFIG.maxSize, COMET_SIZE_CONFIG.minSize, normalizedDistance);
+        this.size = lerp(
+            COMET_SIZE_CONFIG.maxSize,
+            COMET_SIZE_CONFIG.minSize,
+            normalizedDistance
+        );
     }
 
     renderHead() {
@@ -110,7 +125,9 @@ class Comet {
         journeyProgress = constrain(journeyProgress, 0, 1);
 
         // Use more of the trail in the middle of the journey, less at start/end.
-        let effectiveLength = floor(this.trail.length * (0.2 + 0.8 * journeyProgress));
+        let effectiveLength = floor(
+            this.trail.length * (0.2 + 0.8 * journeyProgress)
+        );
         effectiveLength = constrain(effectiveLength, 2, this.trail.length);
 
         const startIndex = this.trail.length - effectiveLength;
@@ -129,7 +146,7 @@ class Comet {
 
         // Walk trail from head (near comet) towards far tail
         for (let i = this.trail.length - 1; i > startIndex; i--) {
-            const idxFromHead = (this.trail.length - 1) - i; // 0 at head
+            const idxFromHead = this.trail.length - 1 - i; // 0 at head
             const u = segmentCount > 0 ? idxFromHead / segmentCount : 0; // 0..1
 
             // Fade smoothly from bright near the head to faint at the far tail.
@@ -146,4 +163,6 @@ class Comet {
         }
     }
 }
+
+
 

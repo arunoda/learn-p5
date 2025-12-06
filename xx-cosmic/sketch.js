@@ -16,6 +16,14 @@ let stageStartFrame = 0;
 let firstTargetPosition;
 let secondTargetPosition;
 let positionRestored = false; // Flag to track if position was restored from localStorage
+let lastSavedPosition = null; // Track last saved position to avoid unnecessary saves
+let lastSaveTime = 0; // Throttle position saves
+const POSITION_SAVE_INTERVAL = 100; // Save position every 100ms (10 times per second)
+
+// Tab ownership for animation view
+let tabId = null; // Unique ID for this tab
+let isShowingAnimation = false; // Whether this tab is showing the animation
+let animationOwnerTabId = null; // Which tab currently owns the animation view
 
 // Comet size configuration
 const COMET_SIZE_CONFIG = {
@@ -61,12 +69,75 @@ function setup() {
     currentStage = 0;
     stageStartFrame = frameCount;
 
+    // Generate unique tab ID
+    tabId = generateTabId();
+    
     // Initialize config UI
-    configUI = new ConfigUI(STAGE_CONFIG, resetAnimation, startFromStage);
+    configUI = new ConfigUI(STAGE_CONFIG, resetAnimation, startFromStage, claimAnimationView, sendRemoteCommand);
     configUI.init();
+
+    // Check if this tab should show animation or config-only
+    checkAnimationOwnership();
 
     // Try to restore position from localStorage
     loadAndRestorePosition();
+
+    // Set up cross-tab synchronization
+    setupCrossTabSync();
+    
+    // Check for any pending remote commands immediately
+    checkRemoteCommands();
+}
+
+function generateTabId() {
+    // Generate a unique ID for this tab
+    let id = sessionStorage.getItem('cosmicTabId');
+    if (!id) {
+        id = `tab_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        sessionStorage.setItem('cosmicTabId', id);
+    }
+    return id;
+}
+
+function checkAnimationOwnership() {
+    try {
+        const owner = localStorage.getItem('cosmicAnimationOwner');
+        if (!owner) {
+            // No owner yet, claim it
+            claimAnimationView();
+        } else if (owner === tabId) {
+            // This tab owns it
+            isShowingAnimation = true;
+            if (configUI) {
+                configUI.updateViewMode(true);
+            }
+        } else {
+            // Another tab owns it, show config-only
+            isShowingAnimation = false;
+            if (configUI) {
+                configUI.updateViewMode(false);
+            }
+        }
+    } catch (e) {
+        console.warn("Could not check animation ownership:", e);
+        // Default to showing animation if we can't check
+        isShowingAnimation = true;
+        if (configUI) {
+            configUI.updateViewMode(true);
+        }
+    }
+}
+
+function claimAnimationView() {
+    try {
+        localStorage.setItem('cosmicAnimationOwner', tabId);
+        isShowingAnimation = true;
+        if (configUI) {
+            configUI.updateViewMode(isShowingAnimation);
+        }
+    } catch (e) {
+        console.warn("Could not claim animation view:", e);
+    }
 }
 
 function resetAnimation() {
@@ -160,7 +231,9 @@ function windowResized() {
     COMET_SIZE_CONFIG.maxDistance = sqrt(width * width + height * height);
     
     // Update Earth position
-    earth.updatePosition();
+    if (earth) {
+        earth.updatePosition();
+    }
     
     // Update target positions
     firstTargetPosition = createVector(width/2, height/2);
@@ -176,22 +249,37 @@ function draw() {
     // Runs every frame (default ~60 fps)
     background(30);
 
-    updateStages();
-    
-    // Save current position to localStorage (every frame)
-    saveCurrentPosition();
-    
-    earth.render();
-    comet.update();
-    loadingScreen.render(currentStage, stageStartFrame, comet, firstTargetPosition, secondTargetPosition, STAGE_CONFIG);
+    // Check for remote commands (both animation and config-only tabs)
+    checkRemoteCommands();
 
-    // Render config UI
-    if (configUI) {
-        configUI.render();
-    }
+    if (isShowingAnimation) {
+        // Show animation view
+        updateStages();
+        
+        // Save current position to localStorage (throttled)
+        const now = Date.now();
+        if (now - lastSaveTime >= POSITION_SAVE_INTERVAL) {
+            saveCurrentPosition();
+            lastSaveTime = now;
+        }
+        
+        earth.render();
+        comet.update();
+        loadingScreen.render(currentStage, stageStartFrame, comet, firstTargetPosition, secondTargetPosition, STAGE_CONFIG);
 
-    if (keyIsDown("h") || keyIsDown("H")) {
-        comet.show(false);
+        // Render config UI (overlay)
+        if (configUI) {
+            configUI.render();
+        }
+
+        if (keyIsDown("h") || keyIsDown("H")) {
+            comet.show(false);
+        }
+    } else {
+        // Show config-only view
+        if (configUI) {
+            configUI.renderConfigOnly();
+        }
     }
 }
 
@@ -202,12 +290,133 @@ function saveCurrentPosition() {
         
         const positionData = {
             stage: currentStage,
-            seconds: elapsedSeconds
+            seconds: elapsedSeconds,
+            timestamp: Date.now() // Add timestamp to detect changes
         };
         
-        localStorage.setItem("cosmicCurrentPosition", JSON.stringify(positionData));
+        // Only save if position actually changed (to reduce storage events)
+        const positionKey = `${currentStage}-${elapsedSeconds.toFixed(2)}`;
+        if (lastSavedPosition !== positionKey) {
+            localStorage.setItem("cosmicCurrentPosition", JSON.stringify(positionData));
+            lastSavedPosition = positionKey;
+        }
     } catch (e) {
         console.warn("Could not save position to localStorage:", e);
+    }
+}
+
+function setupCrossTabSync() {
+    // Listen for storage events from other tabs
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'cosmicAnimationOwner' && e.newValue) {
+            // Animation ownership changed
+            if (e.newValue === tabId) {
+                // This tab now owns the animation
+                isShowingAnimation = true;
+                if (configUI) {
+                    configUI.updateViewMode(true);
+                }
+            } else {
+                // Another tab owns the animation
+                isShowingAnimation = false;
+                if (configUI) {
+                    configUI.updateViewMode(false);
+                }
+            }
+        } else if (e.key === 'cosmicAnimationCommand' && e.newValue && isShowingAnimation) {
+            // Remote command received (only process if we're showing animation)
+            try {
+                const command = JSON.parse(e.newValue);
+                // Only process if it's a new command (different timestamp)
+                if (command.timestamp && command.timestamp > lastCommandTimestamp) {
+                    lastCommandTimestamp = command.timestamp;
+                    executeRemoteCommand(command);
+                }
+            } catch (err) {
+                console.warn("Could not execute remote command:", err);
+            }
+        } else if (e.key === 'cosmicCurrentPosition' && e.newValue && isShowingAnimation) {
+            // Position changed in another tab (only sync if we're showing animation)
+            try {
+                const positionData = JSON.parse(e.newValue);
+                const stage = positionData.stage || 0;
+                const seconds = positionData.seconds || 0;
+                
+                // Only sync if the data is valid
+                if (stage >= 0 && stage <= 3 && seconds >= 0) {
+                    startFromStage(stage, seconds);
+                }
+            } catch (err) {
+                console.warn("Could not sync position from other tab:", err);
+            }
+        } else if (e.key === 'cosmicStageConfig' && e.newValue) {
+            // Config changed in another tab
+            try {
+                const parsed = JSON.parse(e.newValue);
+                // Update the config object
+                STAGE_CONFIG.delayBeforeAppear = parsed.delayBeforeAppear ?? STAGE_CONFIG.delayBeforeAppear;
+                STAGE_CONFIG.timeToFirstTarget = parsed.timeToFirstTarget ?? STAGE_CONFIG.timeToFirstTarget;
+                STAGE_CONFIG.stayAtFirstTarget = parsed.stayAtFirstTarget ?? STAGE_CONFIG.stayAtFirstTarget;
+                STAGE_CONFIG.timeToSecondTarget = parsed.timeToSecondTarget ?? STAGE_CONFIG.timeToSecondTarget;
+                
+                // Update the UI inputs
+                if (configUI) {
+                    configUI.updateInputValues();
+                }
+            } catch (err) {
+                console.warn("Could not sync config from other tab:", err);
+            }
+        }
+    });
+    
+    // Also check for commands on each frame (for same-tab commands)
+    // This handles the case where a config-only tab sends a command
+    // and we need to process it even if storage event doesn't fire
+}
+
+function executeRemoteCommand(command) {
+    if (command.type === 'reset') {
+        resetAnimation();
+    } else if (command.type === 'startFromStage') {
+        const stage = command.stage || 0;
+        const seconds = command.seconds || 0;
+        startFromStage(stage, seconds);
+    }
+}
+
+function sendRemoteCommand(command) {
+    try {
+        const commandData = {
+            ...command,
+            timestamp: Date.now()
+        };
+        localStorage.setItem('cosmicAnimationCommand', JSON.stringify(commandData));
+        // Clear the command after a short delay to allow storage event to fire
+        setTimeout(() => {
+            localStorage.removeItem('cosmicAnimationCommand');
+        }, 100);
+    } catch (e) {
+        console.warn("Could not send remote command:", e);
+    }
+}
+
+// Check for commands on each frame (handles same-tab and cross-tab)
+let lastCommandTimestamp = 0;
+function checkRemoteCommands() {
+    try {
+        const commandStr = localStorage.getItem('cosmicAnimationCommand');
+        if (commandStr) {
+            const command = JSON.parse(commandStr);
+            // Only process if it's a new command (different timestamp)
+            if (command.timestamp && command.timestamp > lastCommandTimestamp) {
+                lastCommandTimestamp = command.timestamp;
+                if (isShowingAnimation) {
+                    executeRemoteCommand(command);
+                }
+            }
+        }
+    } catch (e) {
+        // Ignore errors
     }
 }
 
@@ -228,6 +437,12 @@ function loadAndRestorePosition() {
     } catch (e) {
         console.warn("Could not load position from localStorage:", e);
     }
+}
+
+function syncPositionFromStorage() {
+    // This function can be called to manually sync position from storage
+    // Useful for periodic syncing or when needed
+    loadAndRestorePosition();
 }
 
 function clearSavedPosition() {

@@ -1,22 +1,30 @@
 class ConfigUI {
-    constructor(stageConfig, resetCallback, startFromStageCallback) {
+    constructor(stageConfig, resetCallback, startFromStageCallback, claimAnimationCallback, sendRemoteCommandCallback) {
         this.stageConfig = stageConfig;
         this.resetCallback = resetCallback;
         this.startFromStageCallback = startFromStageCallback;
+        this.claimAnimationCallback = claimAnimationCallback;
+        this.sendRemoteCommandCallback = sendRemoteCommandCallback;
         this.panelVisible = false;
         this.button = null;
         this.panel = null;
         this.playButton = null;
+        this.showAnimationButton = null; // Button to claim animation view
+        this.configOnlyContainer = null; // Container for config-only view
         this.inputs = {};
         this.stageSecondsInputs = {}; // Store seconds inputs for each stage
         this.showButtonThreshold = 100; // Show button when mouse is within 100px from top
+        this.isShowingAnimation = true; // Default to animation view
     }
 
     init() {
         // Load saved config from localStorage
         this.loadConfigFromStorage();
         
-        // Create toggle button
+        // Create config-only container (shown when not displaying animation)
+        this.createConfigOnlyView();
+        
+        // Create toggle button (for animation view)
         if (!this.button) {
             this.button = createButton("⚙");
             this.button.position(windowWidth - 50, 10);
@@ -42,7 +50,7 @@ class ConfigUI {
             });
         }
         
-        // Create panel container
+        // Create panel container (for animation view overlay)
         if (!this.panel) {
             this.panel = createDiv();
             this.panel.style("position", "absolute");
@@ -72,6 +80,7 @@ class ConfigUI {
         this.updatePanelPosition();
         this.updatePanelVisibility();
         this.updateInputValues();
+        this.updateViewMode(this.isShowingAnimation);
     }
 
     updatePanelPosition() {
@@ -108,8 +117,314 @@ class ConfigUI {
     }
 
     render() {
-        // Update button visibility based on mouse position
-        this.updateButtonVisibility();
+        // Update button visibility based on mouse position (only in animation view)
+        if (this.isShowingAnimation) {
+            this.updateButtonVisibility();
+        }
+    }
+
+    renderConfigOnly() {
+        // Show config-only view (when not showing animation)
+        if (this.configOnlyContainer) {
+            this.configOnlyContainer.style("display", "block");
+        }
+    }
+
+    createConfigOnlyView() {
+        if (this.configOnlyContainer) return;
+        
+        this.configOnlyContainer = createDiv();
+        this.configOnlyContainer.style("position", "absolute");
+        this.configOnlyContainer.style("top", "0");
+        this.configOnlyContainer.style("left", "0");
+        this.configOnlyContainer.style("width", "100%");
+        this.configOnlyContainer.style("height", "100%");
+        this.configOnlyContainer.style("background-color", "#1e1e1e");
+        this.configOnlyContainer.style("display", "none");
+        this.configOnlyContainer.style("z-index", "100");
+        this.configOnlyContainer.style("overflow-y", "auto");
+        
+        // Center content
+        const contentWrapper = createDiv();
+        contentWrapper.parent(this.configOnlyContainer);
+        contentWrapper.style("display", "flex");
+        contentWrapper.style("flex-direction", "column");
+        contentWrapper.style("align-items", "center");
+        contentWrapper.style("justify-content", "center");
+        contentWrapper.style("min-height", "100%");
+        contentWrapper.style("padding", "40px 20px");
+        
+        // Title
+        const title = createElement("h1", "Animation Configuration");
+        title.parent(contentWrapper);
+        title.style("color", "#c8c8c8");
+        title.style("font-family", "monospace");
+        title.style("font-size", "32px");
+        title.style("margin-bottom", "20px");
+        title.style("font-weight", "normal");
+        
+        // Status message
+        const statusMsg = createElement("p", "Another tab is currently displaying the animation.");
+        statusMsg.parent(contentWrapper);
+        statusMsg.style("color", "#969696");
+        statusMsg.style("font-family", "monospace");
+        statusMsg.style("font-size", "14px");
+        statusMsg.style("margin-bottom", "30px");
+        
+        // Show Animation button
+        this.showAnimationButton = createButton("▶ Show Animation");
+        this.showAnimationButton.parent(contentWrapper);
+        this.showAnimationButton.style("padding", "15px 40px");
+        this.showAnimationButton.style("margin-bottom", "40px");
+        this.showAnimationButton.style("background-color", "#4a7c59");
+        this.showAnimationButton.style("color", "#ffffff");
+        this.showAnimationButton.style("border", "none");
+        this.showAnimationButton.style("border-radius", "6px");
+        this.showAnimationButton.style("font-size", "16px");
+        this.showAnimationButton.style("font-family", "monospace");
+        this.showAnimationButton.style("cursor", "pointer");
+        this.showAnimationButton.style("transition", "background-color 0.2s");
+        this.showAnimationButton.mouseOver(() => {
+            this.showAnimationButton.style("background-color", "#5a9c69");
+        });
+        this.showAnimationButton.mouseOut(() => {
+            this.showAnimationButton.style("background-color", "#4a7c59");
+        });
+        this.showAnimationButton.mousePressed(() => {
+            if (this.claimAnimationCallback) {
+                this.claimAnimationCallback();
+            }
+        });
+        
+        // Config panel (always visible in config-only mode)
+        const configPanel = createDiv();
+        configPanel.parent(contentWrapper);
+        configPanel.style("background-color", "rgba(40, 40, 40, 0.95)");
+        configPanel.style("border", "2px solid #646464");
+        configPanel.style("border-radius", "8px");
+        configPanel.style("padding", "25px");
+        configPanel.style("width", "100%");
+        configPanel.style("max-width", "500px");
+        configPanel.style("font-family", "monospace");
+        
+        // Panel title
+        const panelTitle = createElement("h2", "Stage Configuration");
+        panelTitle.parent(configPanel);
+        panelTitle.style("margin", "0 0 20px 0");
+        panelTitle.style("color", "#c8c8c8");
+        panelTitle.style("font-size", "18px");
+        panelTitle.style("font-weight", "normal");
+        
+        // Create global play button for config-only view
+        this.createConfigOnlyPlayButton(configPanel);
+        
+        // Create inputs for config-only view
+        this.createConfigOnlyInputs(configPanel);
+    }
+
+    createConfigOnlyPlayButton(container) {
+        const playButton = createButton("▶ Play");
+        playButton.parent(container);
+        playButton.style("display", "block");
+        playButton.style("width", "100%");
+        playButton.style("padding", "12px");
+        playButton.style("margin-bottom", "20px");
+        playButton.style("background-color", "#4a7c59");
+        playButton.style("color", "#ffffff");
+        playButton.style("border", "none");
+        playButton.style("border-radius", "6px");
+        playButton.style("font-size", "14px");
+        playButton.style("font-family", "monospace");
+        playButton.style("cursor", "pointer");
+        playButton.style("transition", "background-color 0.2s");
+        playButton.mouseOver(() => {
+            playButton.style("background-color", "#5a9c69");
+        });
+        playButton.mouseOut(() => {
+            playButton.style("background-color", "#4a7c59");
+        });
+        playButton.mousePressed(() => {
+            if (this.isShowingAnimation) {
+                // If showing animation, call callback directly
+                if (this.resetCallback) {
+                    this.resetCallback();
+                }
+            } else {
+                // If config-only mode, send remote command
+                if (this.sendRemoteCommandCallback) {
+                    this.sendRemoteCommandCallback({ type: 'reset' });
+                }
+            }
+        });
+    }
+
+    createConfigOnlyInputs(container) {
+        const configs = [
+            { key: "delayBeforeAppear", label: "Delay Before Appear (seconds)", stage: 0 },
+            { key: "timeToFirstTarget", label: "Time to First Target (seconds)", stage: 1 },
+            { key: "stayAtFirstTarget", label: "Stay at First Target (seconds)", stage: 2 },
+            { key: "timeToSecondTarget", label: "Time to Second Target (seconds)", stage: 3 }
+        ];
+        
+        configs.forEach((config, index) => {
+            // Create label
+            const label = createElement("label", config.label);
+            label.parent(container);
+            label.style("display", "block");
+            label.style("color", "#b4b4b4");
+            label.style("font-size", "13px");
+            if (index > 0) {
+                label.style("margin-top", "15px");
+            }
+            label.style("margin-bottom", "8px");
+            
+            // Create input row with seconds input and play button
+            const inputRow = createDiv();
+            inputRow.parent(container);
+            inputRow.style("display", "flex");
+            inputRow.style("gap", "10px");
+            inputRow.style("margin-bottom", "10px");
+            
+            // Create input
+            const input = createInput(this.stageConfig[config.key].toString());
+            input.parent(inputRow);
+            input.style("flex", "1");
+            input.style("box-sizing", "border-box");
+            input.style("background-color", "#2a2a2a");
+            input.style("color", "#c8c8c8");
+            input.style("border", "1px solid #646464");
+            input.style("border-radius", "4px");
+            input.style("padding", "8px 12px");
+            input.style("font-size", "14px");
+            input.style("font-family", "monospace");
+            
+            // Create seconds input for jumping to specific time in stage
+            const secondsInput = createInput("0");
+            secondsInput.parent(inputRow);
+            secondsInput.style("width", "70px");
+            secondsInput.style("box-sizing", "border-box");
+            secondsInput.style("background-color", "#2a2a2a");
+            secondsInput.style("color", "#c8c8c8");
+            secondsInput.style("border", "1px solid #646464");
+            secondsInput.style("border-radius", "4px");
+            secondsInput.style("padding", "8px 12px");
+            secondsInput.style("font-size", "14px");
+            secondsInput.style("font-family", "monospace");
+            secondsInput.style("flex-shrink", "0");
+            
+            // Validate seconds input
+            secondsInput.input(() => {
+                const value = parseFloat(secondsInput.value());
+                if (isNaN(value) || value < 0) {
+                    secondsInput.value("0");
+                }
+            });
+            
+            // Create play button for this stage
+            const stagePlayButton = createButton("▶");
+            stagePlayButton.parent(inputRow);
+            stagePlayButton.style("padding", "8px 16px");
+            stagePlayButton.style("background-color", "#4a7c59");
+            stagePlayButton.style("color", "#ffffff");
+            stagePlayButton.style("border", "none");
+            stagePlayButton.style("border-radius", "4px");
+            stagePlayButton.style("font-size", "14px");
+            stagePlayButton.style("font-family", "monospace");
+            stagePlayButton.style("cursor", "pointer");
+            stagePlayButton.style("transition", "background-color 0.2s");
+            stagePlayButton.style("flex-shrink", "0");
+            stagePlayButton.style("white-space", "nowrap");
+            stagePlayButton.mouseOver(() => {
+                stagePlayButton.style("background-color", "#5a9c69");
+            });
+            stagePlayButton.mouseOut(() => {
+                stagePlayButton.style("background-color", "#4a7c59");
+            });
+            stagePlayButton.mousePressed(() => {
+                const seconds = parseFloat(secondsInput.value()) || 0;
+                if (this.isShowingAnimation) {
+                    // If showing animation, call callback directly
+                    if (this.startFromStageCallback) {
+                        this.startFromStageCallback(config.stage, seconds);
+                    }
+                } else {
+                    // If config-only mode, send remote command
+                    if (this.sendRemoteCommandCallback) {
+                        this.sendRemoteCommandCallback({
+                            type: 'startFromStage',
+                            stage: config.stage,
+                            seconds: seconds
+                        });
+                    }
+                }
+            });
+            
+            // Store seconds input reference (support multiple inputs for same stage)
+            if (!this.stageSecondsInputs[config.stage]) {
+                this.stageSecondsInputs[config.stage] = secondsInput;
+            } else if (Array.isArray(this.stageSecondsInputs[config.stage])) {
+                this.stageSecondsInputs[config.stage].push(secondsInput);
+            } else {
+                this.stageSecondsInputs[config.stage] = [this.stageSecondsInputs[config.stage], secondsInput];
+            }
+            
+            // Store reference - support multiple inputs for same key
+            if (!this.inputs[config.key]) {
+                this.inputs[config.key] = input;
+            } else if (Array.isArray(this.inputs[config.key])) {
+                this.inputs[config.key].push(input);
+            } else {
+                // Convert to array if we have multiple inputs
+                this.inputs[config.key] = [this.inputs[config.key], input];
+            }
+            
+            // Add change handler
+            input.input(() => {
+                const value = parseFloat(input.value());
+                const isDivisorField = config.key === "timeToFirstTarget" || config.key === "timeToSecondTarget";
+                const isValid = !isNaN(value) && (isDivisorField ? value > 0 : value >= 0);
+                
+                if (isValid) {
+                    this.stageConfig[config.key] = value;
+                    this.saveConfigToStorage();
+                    // Also update other inputs for the same key
+                    const inputsForKey = Array.isArray(this.inputs[config.key]) 
+                        ? this.inputs[config.key] 
+                        : [this.inputs[config.key]];
+                    inputsForKey.forEach(otherInput => {
+                        if (otherInput && otherInput !== input) {
+                            otherInput.value(value.toString());
+                        }
+                    });
+                } else {
+                    input.value(this.stageConfig[config.key].toString());
+                }
+            });
+        });
+    }
+
+    updateViewMode(showingAnimation) {
+        this.isShowingAnimation = showingAnimation;
+        
+        if (showingAnimation) {
+            // Hide config-only view
+            if (this.configOnlyContainer) {
+                this.configOnlyContainer.style("display", "none");
+            }
+            // Show overlay button
+            if (this.button) {
+                this.button.style("display", "block");
+            }
+        } else {
+            // Show config-only view
+            if (this.configOnlyContainer) {
+                this.configOnlyContainer.style("display", "block");
+            }
+            // Hide overlay button
+            if (this.button) {
+                this.button.style("display", "none");
+            }
+        }
     }
 
     createPlayButton() {
@@ -244,21 +559,49 @@ class ConfigUI {
                 if (isValid) {
                     this.stageConfig[config.key] = value;
                     this.saveConfigToStorage();
+                    // Also update other inputs for the same key (config-only view)
+                    const existingInput = this.inputs[config.key];
+                    if (existingInput) {
+                        const inputsForKey = Array.isArray(existingInput) 
+                            ? existingInput 
+                            : [existingInput];
+                        inputsForKey.forEach(otherInput => {
+                            if (otherInput && otherInput !== input) {
+                                otherInput.value(value.toString());
+                            }
+                        });
+                    }
                 } else {
                     // Reset to current config value if invalid
                     input.value(this.stageConfig[config.key].toString());
                 }
             });
             
-            this.inputs[config.key] = input;
+            // Store reference - support multiple inputs for same key
+            if (!this.inputs[config.key]) {
+                this.inputs[config.key] = input;
+            } else if (Array.isArray(this.inputs[config.key])) {
+                this.inputs[config.key].push(input);
+            } else {
+                // Convert to array if we have multiple inputs
+                this.inputs[config.key] = [this.inputs[config.key], input];
+            }
         });
     }
 
     updateInputValues() {
         // Update input values to match current config
+        // This updates all inputs (both overlay and config-only view)
         for (let key in this.inputs) {
             if (this.inputs[key]) {
-                this.inputs[key].value(this.stageConfig[key].toString());
+                // If it's an array (multiple inputs for same key), update all
+                if (Array.isArray(this.inputs[key])) {
+                    this.inputs[key].forEach(input => {
+                        if (input) input.value(this.stageConfig[key].toString());
+                    });
+                } else {
+                    this.inputs[key].value(this.stageConfig[key].toString());
+                }
             }
         }
     }

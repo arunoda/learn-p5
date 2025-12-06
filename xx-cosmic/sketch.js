@@ -1,9 +1,10 @@
 let earth;
 let comet;
 let loadingScreen;
+let configUI;
 
 // Stage configuration (in seconds)
-const STAGE_CONFIG = {
+let STAGE_CONFIG = {
     delayBeforeAppear: 1,      // Time before comet appears
     timeToFirstTarget: 4,      // Time to reach first target (close to earth)
     stayAtFirstTarget: 5,      // Time to stay at first target
@@ -58,6 +59,25 @@ function setup() {
 
     currentStage = 0;
     stageStartFrame = frameCount;
+
+    // Initialize config UI
+    configUI = new ConfigUI(STAGE_CONFIG, resetAnimation);
+    configUI.init();
+}
+
+function resetAnimation() {
+    // Reset comet to initial position
+    const initialPos = createVector(width * 0.05, height * 0.05);
+    comet.position = initialPos;
+    comet.startPosition = initialPos;
+    comet.target = initialPos;
+    comet.speed = 0;
+    comet.trail = [];
+    comet.show(false);
+    
+    // Reset stage
+    currentStage = 0;
+    stageStartFrame = frameCount;
 }
 
 function windowResized() {
@@ -72,6 +92,11 @@ function windowResized() {
     // Update target positions
     firstTargetPosition = createVector(width/2, height/2);
     secondTargetPosition = createVector(width * 0.7, height * 0.3);
+    
+    // Update config panel position
+    if (configUI) {
+        configUI.updatePanelPosition();
+    }
 }
 
 function draw() {
@@ -83,6 +108,11 @@ function draw() {
     earth.render();
     comet.update();
     loadingScreen.render(currentStage, stageStartFrame, comet, firstTargetPosition, secondTargetPosition, STAGE_CONFIG);
+
+    // Render config UI
+    if (configUI) {
+        configUI.render();
+    }
 
     if (keyIsDown("h") || keyIsDown("H")) {
         comet.show(false);

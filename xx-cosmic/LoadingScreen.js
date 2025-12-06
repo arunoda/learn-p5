@@ -61,7 +61,19 @@ class LoadingScreen {
         fill(100);
         textAlign(CENTER);
         textSize(max(12, width * 0.025)); // Responsive text size
-        const countdownText = `${stageName}: ${max(0, timeRemaining).toFixed(1)}s`;
+        
+        // Format time with minutes if > 60 seconds
+        let timeText = "";
+        const totalSeconds = max(0, floor(timeRemaining));
+        if (totalSeconds >= 60) {
+            const minutes = floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            timeText = `${minutes} m ${seconds} s`;
+        } else {
+            timeText = `${totalSeconds} s`;
+        }
+        
+        const countdownText = `${stageName}: ${timeText}`;
         text(countdownText, width / 2, height - height * 0.1);
         
         // Render progress bar

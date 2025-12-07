@@ -27,18 +27,18 @@ class Mover {
 
         if (this.position.y > height - radius) {
             this.position.y = height - radius;
-            this.velocity.y *= -1;
+            this.velocity.y *= -1.0;
         } else if (this.position.y < radius) {
             this.position.y = radius;
-            this.velocity.y *= -1;
+            this.velocity.y *= -1.0;
         }
         
         if (this.position.x > width - radius) {
             this.position.x = width - radius;
-            this.velocity.x *= -1;
+            this.velocity.x *= -1.0;
         } else if (this.position.x < radius) {
             this.position.x = radius;
-            this.velocity.x *= -1;
+            this.velocity.x *= -1.0;
         }
     }
 
